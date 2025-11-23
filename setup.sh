@@ -185,7 +185,13 @@ configure_settings() {
             ;;
     esac
 
-
+    # PostgreSQL installation configuration
+    INSTALL_POSTGRES=$(safe_read "Do you want to install PostgreSQL? (y/n) [y]: " "y")
+    if [[ "${INSTALL_POSTGRES}" =~ ^[Yy]$ ]]; then
+        BACKUP_DIR=$(get_user_input "Enter base directory for PostgreSQL backups" "${DEFAULT_BACKUP_DIR}")
+    else
+        BACKUP_DIR=""
+    fi
 
     # Confirm settings
     echo -e "\n=== Configuration Summary ==="
@@ -196,13 +202,15 @@ configure_settings() {
     else
         echo "Docker Mirror: None (using Docker default)"
     fi
-
-    # PostgreSQL installation configuration
-    INSTALL_POSTGRES=$(safe_read "Do you want to install PostgreSQL? (y/n) [y]: " "y")
     if [[ "${INSTALL_POSTGRES}" =~ ^[Yy]$ ]]; then
-        BACKUP_DIR=$(get_user_input "Enter base directory for PostgreSQL backups" "${DEFAULT_BACKUP_DIR}")
+        echo "PostgreSQL: Install"
+        if [ -n "${BACKUP_DIR}" ]; then
+            echo "PostgreSQL Backup Directory: ${BACKUP_DIR}"
+        else
+            echo "PostgreSQL Backup Directory: /apps/backups/postgres (default)"
+        fi
     else
-        BACKUP_DIR=""
+        echo "PostgreSQL: Not install"
     fi
 
     CONFIRM=$(safe_read "Are these settings correct? (y/n) [y]: " "y")
