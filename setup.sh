@@ -38,13 +38,23 @@ if [ "$EUID" -ne 0 ]; then
 fi
 
 # Interactive configuration
-get_user_input() {
+safe_read() {
     local prompt="$1"
     local default="$2"
     local result
-
-    read -p "${prompt} [${default}]: " result
+    if [ -t 0 ]; then
+        read -p "${prompt}" result || true
+    else
+        # Non-interactive mode: use default
+        result=""
+    fi
     echo "${result:-${default}}"
+}
+
+get_user_input() {
+    local prompt="$1"
+    local default="$2"
+    safe_read "${prompt} [${default}]: " "${default}"
 }
 
 get_password() {
@@ -53,10 +63,20 @@ get_password() {
     local password1
     local password2
 
+    # In non-interactive mode, use default or generate
+    if [ ! -t 0 ]; then
+        if [ -n "$default" ]; then
+            echo -n "$default"
+        else
+            echo -n "$(generate_password)"
+        fi
+        return
+    fi
+
     while true; do
         # If default password is provided and user presses Enter, use default
         if [ -n "$default" ]; then
-            read -s -p "${prompt} [press Enter to use default: ${default}]: " password1
+            read -s -p "${prompt} [press Enter to use default: ${default}]: " password1 || true
             echo
             if [ -z "$password1" ]; then
                 # Return the default password if user pressed Enter
@@ -64,7 +84,7 @@ get_password() {
                 return
             fi
         else
-            read -s -p "${prompt}: " password1
+            read -s -p "${prompt}: " password1 || true
             echo
             if [ -z "$password1" ]; then
                 echo "Password cannot be empty. Please try again."
@@ -72,7 +92,7 @@ get_password() {
             fi
         fi
 
-        read -s -p "Confirm password: " password2
+        read -s -p "Confirm password: " password2 || true
         echo
 
         if [ "$password1" = "$password2" ]; then
@@ -109,15 +129,12 @@ configure_settings() {
     done
 
     # SSH security configuration
-    read -p "Do you want to disable root login? (y/n) [y]: " DISABLE_ROOT_LOGIN
-    DISABLE_ROOT_LOGIN=${DISABLE_ROOT_LOGIN:-y}
+    DISABLE_ROOT_LOGIN=$(safe_read "Do you want to disable root login? (y/n) [y]: " "y")
 
-    read -p "Do you want to disable password authentication (use only SSH keys)? (y/n) [y]: " DISABLE_PASSWORD_AUTH
-    DISABLE_PASSWORD_AUTH=${DISABLE_PASSWORD_AUTH:-y}
+    DISABLE_PASSWORD_AUTH=$(safe_read "Do you want to disable password authentication (use only SSH keys)? (y/n) [y]: " "y")
 
     log "Please enter root password:"
-    read -p "Do you want to reset root password? (y/n) [n]: " RESET_ROOT_PASSWORD
-    RESET_ROOT_PASSWORD=${RESET_ROOT_PASSWORD:-n}
+    RESET_ROOT_PASSWORD=$(safe_read "Do you want to reset root password? (y/n) [n]: " "n")
 
     if [[ "${RESET_ROOT_PASSWORD}" =~ ^[Yy]$ ]]; then
         ROOT_PASSWORD=$(get_password "Enter new root password" "$(generate_password)")
@@ -138,8 +155,7 @@ configure_settings() {
     echo "5) Custom mirror"
     echo "6) No mirror (use Docker default)"
 
-    read -p "Enter your choice [1]: " DOCKER_MIRROR_CHOICE
-    DOCKER_MIRROR_CHOICE=${DOCKER_MIRROR_CHOICE:-1}
+    DOCKER_MIRROR_CHOICE=$(safe_read "Enter your choice [1]: " "1")
 
     case $DOCKER_MIRROR_CHOICE in
         1)
@@ -155,7 +171,7 @@ configure_settings() {
             DOCKER_MIRROR="https://hub-mirror.c.163.com"
             ;;
         5)
-            read -p "Enter custom Docker mirror URL: " DOCKER_MIRROR
+            DOCKER_MIRROR=$(safe_read "Enter custom Docker mirror URL: " "")
             ;;
         6)
             DOCKER_MIRROR=""
@@ -179,16 +195,14 @@ configure_settings() {
     fi
 
     # PostgreSQL installation configuration
-    read -p "Do you want to install PostgreSQL? (y/n) [y]: " INSTALL_POSTGRES
-    INSTALL_POSTGRES=${INSTALL_POSTGRES:-y}
+    INSTALL_POSTGRES=$(safe_read "Do you want to install PostgreSQL? (y/n) [y]: " "y")
     if [[ "${INSTALL_POSTGRES}" =~ ^[Yy]$ ]]; then
         BACKUP_DIR=$(get_user_input "Enter base directory for PostgreSQL backups" "${DEFAULT_BACKUP_DIR}")
     else
         BACKUP_DIR=""
     fi
 
-    read -p "Are these settings correct? (y/n) [y]: " CONFIRM
-    CONFIRM=${CONFIRM:-y}
+    CONFIRM=$(safe_read "Are these settings correct? (y/n) [y]: " "y")
 
     if [[ ! "${CONFIRM}" =~ ^[Yy]$ ]]; then
         error "Configuration cancelled. Please run the script again."
@@ -476,8 +490,7 @@ EOF
     chmod 600 /apps/uipaas/.env
 
     # Ask about backup
-    read -p "Do you want to set up automated PostgreSQL backups? (y/n) [y]: " SETUP_BACKUP
-    SETUP_BACKUP=${SETUP_BACKUP:-y}
+    SETUP_BACKUP=$(safe_read "Do you want to set up automated PostgreSQL backups? (y/n) [y]: " "y")
 
     if [[ "${SETUP_BACKUP}" =~ ^[Yy]$ ]]; then
         if [ -n "${BACKUP_DIR}" ]; then
@@ -595,8 +608,7 @@ configure_auto_https() {
         return
     fi
 
-    read -p "Do you want to configure HTTPS certificates now? (y/n) [n]: " CONFIGURE_HTTPS_NOW
-    CONFIGURE_HTTPS_NOW=${CONFIGURE_HTTPS_NOW:-n}
+    CONFIGURE_HTTPS_NOW=$(safe_read "Do you want to configure HTTPS certificates now? (y/n) [n]: " "n")
     if [[ ! "${CONFIGURE_HTTPS_NOW}" =~ ^[Yy]$ ]]; then
         return
     fi
@@ -607,7 +619,7 @@ configure_auto_https() {
     fi
 
     while true; do
-        read -p "Enter the domain to issue a certificate for (e.g., example.com): " TARGET_DOMAIN
+        TARGET_DOMAIN=$(safe_read "Enter the domain to issue a certificate for (e.g., example.com): " "")
         TARGET_DOMAIN=$(echo -n "$TARGET_DOMAIN" | tr -d '[:space:]')
 
         if [ -z "$TARGET_DOMAIN" ]; then
@@ -622,11 +634,9 @@ configure_auto_https() {
 
         if [ -n "$resolved_ips" ] && [ -n "$PUBLIC_IP" ] && [[ "$resolved_ips" != *"$PUBLIC_IP"* ]]; then
             warning "Domain $TARGET_DOMAIN does not appear to resolve to ${PUBLIC_IP} (resolved: ${resolved_ips})."
-            read -p "Continue anyway? (y/n) [n]: " CONTINUE_ACME
-            CONTINUE_ACME=${CONTINUE_ACME:-n}
+            CONTINUE_ACME=$(safe_read "Continue anyway? (y/n) [n]: " "n")
             if [[ ! "${CONTINUE_ACME}" =~ ^[Yy]$ ]]; then
-                read -p "Do you want to enter a different domain? (y/n) [y]: " TRY_ANOTHER
-                TRY_ANOTHER=${TRY_ANOTHER:-y}
+                TRY_ANOTHER=$(safe_read "Do you want to enter a different domain? (y/n) [y]: " "y")
                 if [[ ! "${TRY_ANOTHER}" =~ ^[Yy]$ ]]; then
                     break
                 fi
@@ -643,8 +653,7 @@ configure_auto_https() {
             warning "Failed to issue certificate for ${TARGET_DOMAIN}. Check logs in /apps/share/certs."
         fi
 
-        read -p "Do you want to add another domain? (y/n) [n]: " ANOTHER_DOMAIN
-        ANOTHER_DOMAIN=${ANOTHER_DOMAIN:-n}
+        ANOTHER_DOMAIN=$(safe_read "Do you want to add another domain? (y/n) [n]: " "n")
         if [[ ! "${ANOTHER_DOMAIN}" =~ ^[Yy]$ ]]; then
             break
         fi
