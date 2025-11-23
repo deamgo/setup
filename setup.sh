@@ -70,6 +70,7 @@ get_password() {
         else
             echo -n "$(generate_password)"
         fi
+        echo >&2  # Add newline to stderr for proper terminal formatting
         return
     fi
 
@@ -80,7 +81,8 @@ get_password() {
             echo
             if [ -z "$password1" ]; then
                 # Return the default password if user pressed Enter
-                echo -n "$default"  # Use -n to avoid adding newline
+                echo -n "$default"  # Use -n to avoid adding newline to output
+                echo >&2  # Add newline to stderr for proper terminal formatting
                 return
             fi
         else
@@ -100,7 +102,8 @@ get_password() {
                 echo "Password must be at least 8 characters long"
                 continue
             fi
-            echo -n "$password1"  # Use -n to avoid adding newline
+            echo -n "$password1"  # Use -n to avoid adding newline to output
+            echo >&2  # Add newline to stderr for proper terminal formatting
             break
         else
             echo "Passwords do not match. Please try again."
