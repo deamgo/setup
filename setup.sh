@@ -709,11 +709,11 @@ install_1panel() {
     # Extract password from installation log - this is the most important part
     # Look for patterns in different languages
     # English: "Panel password: xxxxx"
-    # Chinese locale sample: "Mianban mima: xxxxx"
+    # Chinese: "面板密码: xxxxx"
     # Persian: "ramz oboor panel: xxxxx"
     # Portuguese: "Senha do painel: xxxxx"
-    # Russian: "Parol paneli: xxxxx"
-    PANEL_PASSWORD=$(grep -E '(Panel password|\u9762\u677f\u5bc6\u7801|ramz oboor panel|Senha do painel|\u041f\u0430\u0440\u043e\u043b\u044c \u043f\u0430\u043d\u0435\u043b\u0438)[ \t]*:' "$INSTALL_LOG" | tail -n 1 | awk -F':' '{print $NF}' | tr -d ' ')
+    # Russian: "Пароль панели: xxxxx"
+    PANEL_PASSWORD=$(grep -E '(Panel password|面板密码|ramz oboor panel|Senha do painel|Пароль панели)[ \t]*:' "$INSTALL_LOG" | tail -n 1 | awk -F':' '{print $NF}' | tr -d ' ')
 
     # Check if 1pctl exists
     if [ -f "/usr/local/bin/1pctl" ]; then
@@ -915,13 +915,24 @@ IMPORTANT NEXT STEPS:
 
 5. Add SSH private key to GitHub secrets if needed
 
-Directory Structure:
-- /apps/share (certs/, acme-challenge/, html/)
-- /apps/conf (nginx.conf, default.conf, sites-enabled/)
-- /apps/backups
-- /apps/uipaas/.env$(if [[ "${INSTALL_POSTGRES}" =~ ^[Yy]$ ]]; then echo " (contains PostgreSQL connection info)"; fi)
+- Directory Structure:
+```
+/apps/
+├── share/
+│   ├── certs/
+│   │   └── <domain>
+│   ├── acme-challenge/
+│   └── html/
+├── conf/
+│   ├── nginx.conf
+│   ├── default.conf
+│   └── sites-enabled/
+├── backups/
+│   └── postgres/ (created when backups enabled)
+└── uipaas/
+    └── .env (contains PostgreSQL connection info when PostgreSQL is installed)
+```
 - Symlink: /home/${UIPAAS_ADMIN}/uipaas -> /apps/uipaas
-$(if [ -n "${BACKUP_DIR}" ]; then echo "- Backup disk mounted at: ${BACKUP_DIR}"; fi)
 
 To test SSH access:
 ssh -p ${NEW_SSH_PORT} ${UIPAAS_ADMIN}@${PUBLIC_IP}
