@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Access Denied</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+      }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-family: "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+        background: #0f2027;
+        background: linear-gradient(120deg, #0f2027, #203a43, #2c5364);
+        color: #f5f6fa;
+      }
+      .wrapper {
+        width: min(460px, 92vw);
+        padding: 2.25rem;
+        border-radius: 1rem;
+        background: rgba(11, 15, 24, 0.7);
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.45);
+        text-align: center;
+        backdrop-filter: blur(12px);
+      }
+      h1 {
+        margin: 0;
+        font-size: 2.75rem;
+        letter-spacing: 0.05em;
+      }
+      p {
+        margin: 1rem 0 0;
+        line-height: 1.6;
+        color: #dfe6e9;
+      }
+      .hint {
+        margin-top: 1.5rem;
+        font-size: 0.9rem;
+        color: #a4b0be;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrapper">
+      <h1>403</h1>
+      <p>The resource you requested is protected and cannot be accessed.</p>
+      <p class="hint">If you believe this is an error, please contact the site administrator.</p>
+    </div>
+  </body>
+</html>
+
