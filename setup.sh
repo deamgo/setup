@@ -602,6 +602,8 @@ install_nginx() {
         --name gateway \
         --restart on-failure:5 \
         --network uipaas_network \
+        -p 80:80 \
+        -p 443:443 \
         -v /apps/share:/usr/share/nginx \
         -v /apps/conf/nginx.conf:/etc/nginx/nginx.conf \
         -v /apps/conf/default.conf:/etc/nginx/conf.d/default.conf \
