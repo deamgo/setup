@@ -936,22 +936,20 @@ IMPORTANT NEXT STEPS:
 5. Add SSH private key to GitHub secrets if needed
 
 - Directory Structure:
-```
-/apps/
-├── share/
-│   ├── certs/
-│   │   └── <domain>
-│   ├── acme-challenge/
-│   └── html/
-├── conf/
-│   ├── nginx.conf
-│   ├── default.conf
-│   └── sites-enabled/
-├── backups/
-│   └── postgres/ (created when backups enabled)
-└── uipaas/
-    └── .env (contains PostgreSQL connection info when PostgreSQL is installed)
-```
+  /apps/
+  ├── share/
+  │   ├── certs/
+  │   │   └── <domain>
+  │   ├── acme-challenge/
+  │   └── html/
+  ├── conf/
+  │   ├── nginx.conf
+  │   ├── default.conf
+  │   └── sites-enabled/
+  ├── backups/
+  │   └── postgres/$(if [[ "${INSTALL_POSTGRES}" =~ ^[Yy]$ ]] && [[ "${SETUP_BACKUP:-}" =~ ^[Yy]$ ]]; then echo " (created when backups enabled)"; fi)
+  └── uipaas/
+      └── .env$(if [[ "${INSTALL_POSTGRES}" =~ ^[Yy]$ ]]; then echo " (contains PostgreSQL connection info)"; fi)
 - Symlink: /home/${UIPAAS_ADMIN}/uipaas -> /apps/uipaas
 
 To test SSH access:
