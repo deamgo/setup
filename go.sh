@@ -12,14 +12,15 @@ REPO_NAME="setup"
 REF="${SETUP_REF:-main}"
 RAW_BASE="https://raw.githubusercontent.com/${REPO_OWNER}/${REPO_NAME}/${REF}"
 
-WORKDIR="$(mktemp -d)"
-KEEP_FILES="${SETUP_KEEP_FILES:-0}"
+WORKDIR="${HOME}"
+mkdir -p "${WORKDIR}"
+KEEP_FILES="${SETUP_KEEP_FILES:-1}"
 
 cleanup() {
   if [ "${KEEP_FILES}" != "1" ]; then
     rm -rf "${WORKDIR}"
   else
-    echo "Keeping downloaded files in ${WORKDIR}"
+    echo "Files kept in ${WORKDIR}"
   fi
 }
 trap cleanup EXIT

@@ -964,7 +964,7 @@ $(if [[ "${DISABLE_PASSWORD_AUTH}" =~ ^[Yy]$ ]]; then echo "- Password authentic
 EOF
 
     chmod 600 server_credentials.txt
-    log "Configuration complete! Please check server_credentials.txt for important information"
+    log "Configuration complete! Please check $(pwd)/server_credentials.txt for important information"
 
     configure_auto_https
 }
