@@ -55,6 +55,16 @@ chmod +x "${WORKDIR}/https.sh"
 
 echo "Starting setup..."
 cd "${WORKDIR}"
-"${WORKDIR}/setup.sh"
+
+# Ensure setup.sh runs in interactive mode by redirecting stdin to /dev/tty if available
+# This is necessary because when running via "curl | bash", stdin is the pipe, not the terminal
+if [ -c /dev/tty ]; then
+  # TTY device is available, use it for interactive input
+  "${WORKDIR}/setup.sh" < /dev/tty
+else
+  # No TTY available, run in non-interactive mode (will use defaults)
+  "${WORKDIR}/setup.sh"
+fi
+
 echo "Setup completed."
 
