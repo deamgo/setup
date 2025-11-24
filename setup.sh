@@ -428,13 +428,8 @@ setup_uipaas_dirs() {
     mkdir -p /apps/share/acme-challenge
     mkdir -p /apps/conf/sites-enabled
     mkdir -p /apps/backups
-    mkdir -p /apps/uipaas
-
-    # Set ownership so admin user can operate UIPaaS deployment directory
-    chown -R ${UIPAAS_ADMIN}:${UIPAAS_ADMIN} /apps/uipaas
 
     # Apply reasonable permissions
-    chmod 755 /apps/uipaas
     chmod 750 /apps/share/certs
     chmod 755 /apps/share/html
     chmod 755 /apps/share/acme-challenge
@@ -442,8 +437,16 @@ setup_uipaas_dirs() {
     chmod 755 /apps/conf/sites-enabled
     chmod 755 /apps/backups
 
+    # create UIPaaS application directory
+    mkdir -p /apps/uipaas/conf
+    chmod 755 /apps/uipaas
+
+    # Set ownership so admin user can operate UIPaaS directory
+    chown -R ${UIPAAS_ADMIN}:${UIPAAS_ADMIN} /apps/uipaas
+
     # Create symbolic link in admin user's home
     ln -sfn /apps/uipaas /home/${UIPAAS_ADMIN}/uipaas
+    ln -sfn /apps/uipaas/conf /apps/conf/sites-enabled/uipaas
 
     log "UIPaaS directories setup completed"
     save_status "directories_created"
@@ -671,6 +674,10 @@ configure_auto_https() {
             break
         fi
     done
+
+    if "$auto_https_bin" setup-cron >/dev/null 2>&1; then
+        log "HTTPS renew-check cron job setup completed"
+    fi
 }
 
 # Function to detect server's public IP
@@ -764,88 +771,6 @@ install_1panel() {
     save_status "1panel_installed"
 }
 
-# Configure local firewall
-configure_firewall() {
-    log "Configuring local firewall..."
-
-    # Ports to open
-    PORTS_TO_OPEN=("$NEW_SSH_PORT" "80" "443" "$PANEL_PORT")
-
-    # Check which firewall is installed and active
-    if command -v ufw >/dev/null 2>&1 && ufw status | grep -q "Status: active"; then
-        log "Configuring UFW firewall..."
-
-        for PORT in "${PORTS_TO_OPEN[@]}"; do
-            log "Opening port $PORT/tcp in UFW"
-            ufw allow "$PORT"/tcp
-        done
-
-        # Reload UFW to apply changes
-        ufw reload
-        log "UFW firewall configured successfully"
-
-    elif command -v firewall-cmd >/dev/null 2>&1 && systemctl is-active --quiet firewalld; then
-        log "Configuring FirewallD..."
-
-        for PORT in "${PORTS_TO_OPEN[@]}"; do
-            log "Opening port $PORT/tcp in FirewallD"
-            firewall-cmd --permanent --add-port="$PORT"/tcp
-        done
-
-        # Reload FirewallD to apply changes
-        firewall-cmd --reload
-        log "FirewallD configured successfully"
-
-    elif command -v iptables >/dev/null 2>&1; then
-        log "Configuring iptables..."
-
-        # Check if iptables-persistent is installed
-        IPTABLES_PERSISTENT=false
-        if command -v netfilter-persistent >/dev/null 2>&1; then
-            IPTABLES_PERSISTENT=true
-        fi
-
-        for PORT in "${PORTS_TO_OPEN[@]}"; do
-            log "Opening port $PORT/tcp in iptables"
-            iptables -A INPUT -p tcp --dport "$PORT" -j ACCEPT
-        done
-
-        # Save iptables rules if iptables-persistent is installed
-        if [ "$IPTABLES_PERSISTENT" = true ]; then
-            netfilter-persistent save
-            log "iptables rules saved permanently"
-        else
-            warning "iptables-persistent is not installed. Firewall rules may not persist after reboot."
-            warning "To make rules persistent, run: apt-get install iptables-persistent"
-
-            # Save rules to a file that can be loaded manually
-            iptables-save > /etc/iptables.rules
-            log "iptables rules saved to /etc/iptables.rules"
-
-            # Create a script to load rules at boot
-            cat > /etc/network/if-pre-up.d/iptables <<EOF
-#!/bin/sh
-/sbin/iptables-restore < /etc/iptables.rules
-EOF
-            chmod +x /etc/network/if-pre-up.d/iptables
-            log "Created boot script to load iptables rules"
-        fi
-
-        log "iptables configured successfully"
-    else
-        warning "No supported firewall (ufw, firewalld, iptables) found or active."
-        warning "Please manually configure your firewall to open the following ports:"
-        for PORT in "${PORTS_TO_OPEN[@]}"; do
-            warning "  - $PORT/tcp"
-        done
-    fi
-
-    log "Local firewall configuration completed"
-    log "NOTE: If you are using a cloud provider (like Aliyun), you still need to configure"
-    log "      security groups or network ACLs in your cloud provider's console."
-    save_status "firewall_configured"
-}
-
 # Main execution
 main() {
     # Initialize status file with proper permissions
@@ -873,7 +798,7 @@ main() {
     install_nginx
     install_postgres
     install_1panel
-    # configure_firewall
+    configure_auto_https
 
     # Get admin user's private key
     UIPAAS_ADMIN_PRIVATE_KEY=$(cat /home/${UIPAAS_ADMIN}/.ssh/id_ed25519)
@@ -965,8 +890,6 @@ EOF
 
     chmod 600 server_credentials.txt
     log "Configuration complete! Please check $(pwd)/server_credentials.txt for important information"
-
-    configure_auto_https
 }
 
 # New status management functions
